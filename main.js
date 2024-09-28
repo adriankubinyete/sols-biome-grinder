@@ -1,6 +1,6 @@
 #!/usr/bin/node
 const path = require('path');
-const system = require(path.resolve('systemclass'));
+const system = require(path.resolve('src/lib/systemclass'));
 
 console.log('ENVIRONMENT: ' + process.env.NODE_ENV)
 require("dotenv").config({ path: path.resolve(`.env.${process.env.NODE_ENV || 'dev'}`) });
