@@ -433,5 +433,4 @@ module.exports = {
     determineCurrentProbableBiome,
     notifyDiscord,
     clickPlayButton,
-    sleep
 }

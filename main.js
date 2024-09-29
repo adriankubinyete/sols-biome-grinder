@@ -13,6 +13,7 @@ const log = new Logger("sols-biome-grinder::main", false).useEnvConfig().create(
 // const test = new Tests()
 
 let _execUrl
+let SVR_NUMBER = 0; // server roll iteration, how many times you rolled server
 
 function getPrivateLink() {
     if (_execUrl) { return _execUrl }
@@ -24,6 +25,7 @@ function getPrivateLink() {
 }
 
 async function doServerRoll() {
+    SVR_NUMBER++
     let URL = getPrivateLink();
 
     // open roblox if not open yet
@@ -36,7 +38,7 @@ async function doServerRoll() {
         retry_interval: 1000,
         retry_attempts: 10
     })) {
-        console.log('could not locate textbox play')
+        console.log(`<S#${SVR_NUMBER}> could not locate textbox play`)
         return
     }
     clickPlayButton()
@@ -49,7 +51,7 @@ async function doServerRoll() {
 
     sleep(5000) // waits 3 seconds for fade animation before taking screenshots for biome-detection
 
-    log.info('Detecting biome...')
+    log.info(`<S#${SVR_NUMBER}> Detecting biome...`)
     let biome = await determineCurrentProbableBiome({
         analysis_interval: 250,
         analysis_iterations: 7,
@@ -57,15 +59,17 @@ async function doServerRoll() {
         analysis_output_probable_biome: true,
         analysis_output_probability_list: false,
     });
-    log.info('Biome on this server: ' + biome)
+    log.info(`<S#${SVR_NUMBER}> Biome on this server: ${biome}`)
 
     notifyDiscord(biome)
 
-    log.unit('Closing roblox...')
+    log.unit(`<S#${SVR_NUMBER}> Closing roblox...`)
     await system.closeRoblox()
-    log.unit('Closed roblox.')
+    log.unit(`<S#${SVR_NUMBER}> Succesfully closed`)
 
-    sleep(5000) // wait 5 seconds before rejoining or else roblox gets mad
+    const WAIT_NEXT_ROLL = 5000; //ms
+    log.unit(`<S#${SVR_NUMBER}> Waiting ${WAIT_NEXT_ROLL * 1000}s before next loop...`)
+    sleep(WAIT_NEXT_ROLL) // wait 5 seconds before rejoining or else roblox gets mad
     // (time is approximated)
     doServerRoll()
 }
