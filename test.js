@@ -2,12 +2,15 @@ let path = require('path');
 const robot = require('robotjs');
 const { screenshot } = require('./src/utils/utility');
 const { logMouseCoordinates, determineCurrentProbableBiome, expectText, readBiome, readCoordinate, notifyDiscord, clickPlayButton, sleep } = require(path.resolve("src/utils/utility"));
+const { executeTests } = require(path.resolve('tests/scanAreas'))
 const { Tests } = require(path.resolve("src/utils/tests"))
 const test = new Tests();
 
 
 // Main testing function
 (async () => {
+
+    executeTests()
 
     // robot.moveMouse(960, 870)
     // robot.moveMouseSmooth(965, 875)
@@ -27,7 +30,7 @@ const test = new Tests();
 
     // console.log('Biome: ' + await readBiome())
 
-    
+
 
     // sleep(500)
     // robot.keyToggle('i', 'down')

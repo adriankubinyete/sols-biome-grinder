@@ -52,7 +52,8 @@ function logMouseCoordinates(config = {}) {
 
 async function screenshot(coordinates, filePath, config = {}) {
     const {
-        logging = config?.logging || true
+        logging = config?.logging || true,
+        keep_image = config?.keep_image || false
     } = config;
     // screenshot [[x1, y1], [x2, y2]] path.resolve(images/test.png)
     //

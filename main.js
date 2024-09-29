@@ -27,7 +27,7 @@ function getPrivateLink() {
 }
 
 async function doServerRoll() {
-    if (RECONNECT_ATTEMPTS > 0) { log.warning(`There was ${RECONNECT_ATTEMPTS} reconnections!`)}
+    if (RECONNECT_ATTEMPTS > 0) { log.warn(`There was ${RECONNECT_ATTEMPTS} reconnections!`)}
     if (RECONNECT_ATTEMPTS > 5) { log.critical('Aborting: too many reconnection attempts ') }
     SVR_NUMBER++
     let URL = getPrivateLink();
@@ -72,6 +72,9 @@ async function doServerRoll() {
     }
     log.debug(`[#${SVR_NUMBER}] Found`)
     clickPlayButton()
+    // TODO(adrian): enable auto roll from the get-go
+    // funnily: if you roll something with roll cutscene enabled, it will
+    // screw us over on biome recognition
 
     // TODO(adrian): adjust camera for better biome detect.
     // shit siply wont move with robotjs and i cant figure why
@@ -95,6 +98,11 @@ async function doServerRoll() {
         MISSED_BIOMES++
     } else {
         FOUND_BIOMES++
+    }
+
+    if (['Glitch'].includes(biome)) {
+        log.info('Expected biome found, sleeping for 2 minutes before proceeding')
+        sleep(120000) // lets wait before proceeding if its an expected biome
     }
 
 
