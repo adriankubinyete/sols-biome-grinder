@@ -91,7 +91,9 @@ function executeTests(config = {}) {
         screenshot_biome = config?.screenshot_biome || true,
         screenshot_playbutton = config?.screenshot_playbutton || true,
     } = config;
+    const WAIT_BEFORE_TEST = 5000; // ms
 
+    console.log(`Tests will be starting in ${WAIT_BEFORE_TEST/1000} seconds!`)
     testClickPlayButton()
     testScreenshotBiome({ screenshot: screenshot_biome })
     testScreenshotPlayButton({ screenshot: screenshot_playbutton })
