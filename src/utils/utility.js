@@ -7,6 +7,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const levenshtein = require('fast-levenshtein');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
+const { removeLineBreaks, sleep } = require(path.resolve("src/utils/utils"));
 const { Tests } = require(path.resolve("src/utils/tests"))
 const test = new Tests()
 
@@ -261,11 +262,6 @@ async function readBiome() {
     return readCoordinate(BIOMEBOX_COORDINATE, { logging: false })
 }
 
-// Função para remover quebras de linha
-const removeLineBreaks = (text) => {
-    return text.replace(/(\r\n|\n|\r)/gm, '');
-};
-
 // Função para calcular a probabilidade de cada palavra ser o texto correto
 function calculateProbabilities(text) {
     const PROBABILITY_THRESHOLD = 0.7;
@@ -366,10 +362,6 @@ function analyzeCurrentText(text) {
     };
 }
 
-function sleep(ms) {
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); // wait 2000ms
-}
-
 function click(coordinates) {
     const [x, y] = coordinates;
     robot.moveMouse(x - 5, y - 5); // teleports near objective
@@ -430,17 +422,7 @@ async function notifyDiscord(biome, pingUser = false) {
     hook.send(message)
 };
 
-function getCurrentTimeFormatted() {
-    const now = new Date();
-    
-    // Pega a hora, minuto e segundo
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
 
-    // Retorna no formato [HH:MM:SS]
-    return `[${hours}:${minutes}:${seconds}]`;
-}
 
 module.exports = {
     logMouseCoordinates,
