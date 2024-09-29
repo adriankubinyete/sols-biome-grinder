@@ -154,7 +154,7 @@ async function expectText(expected, coordinates, config = {}) {
 
         for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
             if (logging) { log.debug(`Screenshotting... (${attempt})`) };
-            await screenshot(coordinates, tempImagePath, {logging: logging});
+            await screenshot(coordinates, tempImagePath, { logging: logging });
 
             if (logging) { log.unit(`Recognizing from ${tempImagePath}...`) };
             const result = await Tesseract.recognize(tempImagePath, 'eng');
@@ -258,7 +258,7 @@ async function determineCurrentProbableBiome(config = {}) {
     if (return_iterations) {
         return {
             biome: mostFrequentBiome,
-            iterations: probabilities_iterations 
+            iterations: probabilities_iterations
         }
     }
     return mostFrequentBiome
@@ -285,11 +285,21 @@ function calculateProbabilities(text) {
         'SandStorm',
         'Hell',
         'Starfall',
-        /0\.[0-9]+/ // Para o glitch
+        /[0-9]\.[0-9]+/ // Para o glitch
     ];
 
     // Remove quebras de linha e normaliza o texto para minúsculas
     text = removeLineBreaks(text).trim().toLowerCase();
+
+    // Função para verificar o padrão específico de um "Glitch"
+    function isPotentialGlitch(text) {
+        // O padrão descrito:
+        const glitchPattern = /^[[iI]\s[890256]\s[.,;\s].+$/;
+        const letterCount = (text.match(/[a-z]/gi) || []).length; // Conta letras (se houver)
+
+        // Verifica se o texto segue o padrão e possui no máximo 2 letras após o 4º caractere
+        return glitchPattern.test(text) && letterCount <= 2;
+    }
 
     // Itera sobre as palavras válidas
     validBiomes.forEach(word => {
@@ -307,7 +317,7 @@ function calculateProbabilities(text) {
             confidence = Math.min(confidence, 1);
         } else if (word instanceof RegExp) {
             // Se for uma regex (para glitch), faz a correspondência
-            const isMatch = word.test(text);
+            const isMatch = word.test(text) || isPotentialGlitch(text);
             confidence = isMatch ? 1 : 0;
         }
 
@@ -426,7 +436,7 @@ async function handleDiscordMessage(data) {
         // biome configuration was found
     } else {
         // biome configuration was not found
-        embed_message = `Couldn't identify biome! :warning:${extraData ? '\n'+JSON.stringify(extraData) : ''}`;
+        embed_message = `Couldn't identify biome! :warning:${extraData ? '\n' + JSON.stringify(extraData) : ''}`;
         embed_color = "#1a1a1a"
     }
 

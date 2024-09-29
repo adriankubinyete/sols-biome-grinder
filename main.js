@@ -13,6 +13,9 @@ const log = new Logger("sols-biome-grinder::main", false).useEnvConfig().create(
 
 let _execUrl
 let SVR_NUMBER = 0; // server roll iteration, how many times you rolled server
+let MISSED_BIOMES = 0;
+let FOUND_BIOMES = 0;
+let RECONNECT_ATTEMPTS = 0;
 
 function getPrivateLink() {
     if (_execUrl) { return _execUrl }
@@ -24,6 +27,8 @@ function getPrivateLink() {
 }
 
 async function doServerRoll() {
+    if (RECONNECT_ATTEMPTS > 0) { log.warning(`There was ${RECONNECT_ATTEMPTS} reconnections!`)}
+    if (RECONNECT_ATTEMPTS > 5) { log.critical('Aborting: too many reconnection attempts ') }
     SVR_NUMBER++
     let URL = getPrivateLink();
     const WAIT_GAME_START = 2500; // ms
@@ -55,6 +60,14 @@ async function doServerRoll() {
         // if the method above fails twice, stop the program because
         // something is wrong (window size or something else for instance)
         log.critical(`[#${SVR_NUMBER}]  Could not locate play button. Aborting for unpredicted behaviour.`)
+
+        log.info(`[#${SVR_NUMBER}] Closing roblox...`)
+        await system.closeRoblox()
+        log.debug(`[#${SVR_NUMBER}] Closed`)
+        sleep(5000) // aguarda 5s
+        RECONNECT_ATTEMPTS++
+        
+        doServerRoll()
         return
     }
     log.debug(`[#${SVR_NUMBER}] Found`)
@@ -62,7 +75,7 @@ async function doServerRoll() {
 
     // TODO(adrian): adjust camera for better biome detect.
     // shit siply wont move with robotjs and i cant figure why
-    
+
     sleep(WAIT_AFTER_PLAY_BUTTON) // waits 3 seconds for fade animation before taking screenshots for biome-detection
 
     log.info(`[#${SVR_NUMBER}] Detecting biome...`)
@@ -76,7 +89,14 @@ async function doServerRoll() {
     });
     log.info(`[#${SVR_NUMBER}] Biome on this server: ${biome}`)
 
-    handleDiscordMessage({biome: biome, server: SVR_NUMBER, extra: iterations})
+    handleDiscordMessage({ biome: biome, server: SVR_NUMBER, extra: iterations })
+
+    if (biome === 'Unknown') {
+        MISSED_BIOMES++
+    } else {
+        FOUND_BIOMES++
+    }
+
 
     // decide if you stay in the server or leave, based if ping=true
     // if you stay, enable autoroll
@@ -91,7 +111,12 @@ async function doServerRoll() {
     log.debug(`[#${SVR_NUMBER}] Closed`)
 
 
+    let TOTAL_BIOMES = MISSED_BIOMES + FOUND_BIOMES
+    const MISSED_PERCENTAGE = (MISSED_BIOMES / (TOTAL_BIOMES || 1)) * 100;
+    const FOUND_PERCENTAGE = (FOUND_BIOMES / (TOTAL_BIOMES || 1)) * 100;
     log.info(`[#${SVR_NUMBER}] Waiting ${WAIT_AFTER_CLOSE / 1000}s before next loop...`)
+    log.trace(`[#${SVR_NUMBER}] ${MISSED_PERCENTAGE.toFixed(2)}% biomes missed (${MISSED_BIOMES})`);
+    log.trace(`[#${SVR_NUMBER}] ${FOUND_PERCENTAGE.toFixed(2)}% biomes found (${FOUND_BIOMES})`);
     sleep(WAIT_AFTER_CLOSE) // wait 5 seconds before rejoining or else roblox gets mad
     // (time is approximated)
     doServerRoll()
