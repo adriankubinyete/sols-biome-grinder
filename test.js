@@ -1,5 +1,6 @@
 let path = require('path');
 const robot = require('robotjs');
+const { screenshot } = require('./src/utils/utility');
 const { logMouseCoordinates, determineCurrentProbableBiome, expectText, readBiome, readCoordinate, notifyDiscord, clickPlayButton, sleep } = require(path.resolve("src/utils/utility"));
 const { Tests } = require(path.resolve("src/utils/tests"))
 const test = new Tests();
@@ -17,35 +18,17 @@ const test = new Tests();
     // console.log('Scrolling')
     // robot.scrollMouse(0, 0)
 
+    // const PLAYBUTTONBOX = [[870, 830], [1050, 930]]
+    // const BIOMEBOX = [[10, 905], [180, 925]]
 
-    sleep(3000)
+    // const randomFileName = "bananas";
+    // const tempImagePath = path.resolve(`images/screenshot_${randomFileName}.png`);
+    // await screenshot(BIOMEBOX, tempImagePath)
 
-    robot.mouseClick('left', true)
-    sleep(200)
-    let { x, y } = robot.getMousePos()
-    sleep(200)
-    robot.moveMouseSmooth(x + 5, y + 5)
-    sleep(200)
-    robot.mouseClick('left', true)
+    // console.log('Biome: ' + await readBiome())
 
-    zoomOut()
+    
 
-    function zoomIn() {
-        robot.keyTap('i')
-        sleep(1000)
-        robot.keyTap('o')
-    }
-
-    function zoomOut() {
-        robot.typeString('oo')
-        robot.setKeyboardDelay(1)
-    }
-
-
-
-    console.log('sleeping')
-    sleep(500)
-    console.log('finished')
     // sleep(500)
     // robot.keyToggle('i', 'down')
     // sleep(500)

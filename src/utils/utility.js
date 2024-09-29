@@ -7,7 +7,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const levenshtein = require('fast-levenshtein');
 const { Webhook, MessageBuilder } = require('discord-webhook-node');
-const { removeLineBreaks, sleep } = require(path.resolve("src/utils/utils"));
+const { removeLineBreaks, getCurrentTimeFormatted, sleep } = require(path.resolve("src/utils/utils"));
+const { BIOMECONFIG } = require(path.resolve('src/config/config'))
 const { Tests } = require(path.resolve("src/utils/tests"))
 const test = new Tests()
 
@@ -92,8 +93,7 @@ async function screenshot(coordinates, filePath, config = {}) {
             height: screenshot.height
         })
 
-        image.contrast(0.5)
-        image.brightness(0.2)
+        // image.threshold({max:128}) // basically grayscale
 
         image.write(filePath);
         if (logging) { log.unit('Image saved to "' + filePath + '"') }
@@ -141,7 +141,7 @@ async function readCoordinate(coordinates, config = {}) {
 
 async function expectText(expected, coordinates, config = {}) {
     const {
-        logging = config?.logging || true,
+        logging = config?.logging || false,
         RETRY_INTERVAL = config?.retry_interval || 1000, // mili
         RETRY_ATTEMPTS = config?.retry_attempts || 0
     } = config;
@@ -153,12 +153,12 @@ async function expectText(expected, coordinates, config = {}) {
     try {
 
         for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
-            if (logging) { log.unit(`Screenshotting... (${attempt})`) };
-            await screenshot(coordinates, tempImagePath);
+            if (logging) { log.debug(`Screenshotting... (${attempt})`) };
+            await screenshot(coordinates, tempImagePath, {logging: logging});
 
             if (logging) { log.unit(`Recognizing from ${tempImagePath}...`) };
             const result = await Tesseract.recognize(tempImagePath, 'eng');
-            if (logging) { log.unit(`Recognized: ${result.data.text}`) };
+            if (logging) { log.debug(`Recognized: ${result.data.text}`) };
 
             // Verifica se o texto esperado está no texto reconhecido
             if (result.data.text.includes(expected)) {
@@ -208,6 +208,7 @@ async function determineCurrentProbableBiome(config = {}) {
         analysis_output_probability_list = config?.analysis_output_probability_list || false,
         verbose_if_gibberish = config?.verbose_if_gibberish || true,
         output = config?.output || false,
+        return_iterations = config?.return_iterations || false,
     } = config;
 
     const results = []; // Array para armazenar os resultados das análises
@@ -223,8 +224,8 @@ async function determineCurrentProbableBiome(config = {}) {
 
         // Armazenando o bioma mais provável
         results.push(analysis.probably);
-        probabilities_iterations[`iteration_${i + 1}`] = { 
-            probabilities: analysis.probabilities, 
+        probabilities_iterations[`iteration_${i + 1}`] = {
+            probabilities: analysis.probabilities,
             tesseract: tesseract_biome_output,
             cleaned_tesseract: cleaned_biome
         }
@@ -254,6 +255,12 @@ async function determineCurrentProbableBiome(config = {}) {
         console.log(probabilities_iterations)
     }
 
+    if (return_iterations) {
+        return {
+            biome: mostFrequentBiome,
+            iterations: probabilities_iterations 
+        }
+    }
     return mostFrequentBiome
 }
 
@@ -366,7 +373,7 @@ function click(coordinates) {
     const [x, y] = coordinates;
     robot.moveMouse(x - 5, y - 5); // teleports near objective
     robot.moveMouseSmooth(x, y); // adjust "slowly" to objective
-    console.log(`Clicking on [${x}, ${y}]`)
+    // log.unit(`Clicking on [${x}, ${y}]`)
     // sleep(200)
 
     // fast double click
@@ -396,33 +403,44 @@ function clickPlayButton() {
     return click([960, 870])
 }
 
-async function notifyDiscord(biome, pingUser = false) {
-    const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
-    const hook = new Webhook(WEBHOOK_URL)
+async function handleDiscordMessage(data) {
+    const {
+        biome = data?.biome || 'Unknown',
+        extraData = data?.extra || undefined,
+    } = data;
 
-    const COLORS = {
-        'Normal': '#ffffff',
-        'Rainy': '#2323ff',
-        'Windy': '#83CAC8',
-        'Corruption': '#ff11ff',
-        'Null': '#7f7f7f',
-        'SandStorm': '#ff0000',
-        'Hell': '#ff7700',
-        'Starfall': '#0000ff',
-        'Glitch': '#000000'
+    let ping_user = false;
+    let biome_data = {};
+    let embed_message;
+    let embed_color;
+
+    if (BIOMECONFIG[biome]) {
+        biome_data = BIOMECONFIG[biome];
+
+        // nao vai notificar, nem pingar
+        if (!biome_data.notify && !biome_data.ping) { return };
+        if (biome_data.ping) { ping_user = true };
+
+        embed_message = `**Biome**: \`${biome}\` (${biome_data.spawnchance})`;
+        embed_color = biome_data.embed_hex_color;
+        // biome configuration was found
+    } else {
+        // biome configuration was not found
+        embed_message = `Couldn't identify biome! :warning:${extraData ? '\n'+JSON.stringify(extraData) : ''}`;
+        embed_color = "#1a1a1a"
     }
 
-    console.log('Should ping user? ' + pingUser)
+    const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+    const hook = new Webhook(WEBHOOK_URL);
+
     let message = new MessageBuilder()
-        .setText(pingUser ? `<@${process.env.DISCORD_USERID_TO_PING}>` : '')
-        .setColor(COLORS[biome])
-        .setDescription(`[${getCurrentTimeFormatted()}] **Biome**: \`${biome}\``)
+        .setText(ping_user ? `<@${process.env.DISCORD_USERID_TO_PING}>` : '')
+        .setColor(embed_color)
+        .setDescription(`[${getCurrentTimeFormatted()}] ${embed_message}`)
         .setTimestamp()
 
     hook.send(message)
 };
-
-
 
 module.exports = {
     logMouseCoordinates,
@@ -431,6 +449,6 @@ module.exports = {
     readCoordinate,
     readBiome,
     determineCurrentProbableBiome,
-    notifyDiscord,
+    handleDiscordMessage,
     clickPlayButton,
 }
