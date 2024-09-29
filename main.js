@@ -1,18 +1,16 @@
 #!/usr/bin/node
 const path = require('path');
 const system = require(path.resolve('src/lib/systemclass'));
+const robot = require('robotjs');
+const { setTimeout } = require('timers/promises');
 
 console.log('ENVIRONMENT: ' + process.env.NODE_ENV)
 require("dotenv").config({ path: path.resolve(`.env.${process.env.NODE_ENV || 'dev'}`) });
+const { determineCurrentProbableBiome, expectText, readBiome, readCoordinate, notifyDiscord, clickPlayButton, sleep } = require(path.resolve("src/utils/utility"));
 const { Logger } = require(path.resolve('src/utils/logger'));
+const { Tests } = require(path.resolve("src/utils/tests"))
 const log = new Logger("sols-biome-grinder::main", false).useEnvConfig().create();
-
-// test objective: 
-// launch game 
-// confirm game is open
-// wait 10s
-// close game
-// confirm game is closed
+// const test = new Tests()
 
 let _execUrl
 
@@ -25,23 +23,56 @@ function getPrivateLink() {
     return _execUrl
 }
 
-async function launchRoblox() {
+async function doServerRoll() {
     let URL = getPrivateLink();
 
-    console.log('opening roblox')
+    // open roblox if not open yet
     await system.joinRobloxServer(URL)
-    console.log('server joined!')
 
+    // lets be honest, you're not joining instantly mf
+    sleep(2500)
 
-    //
-    // console.log('closing roblox')
-    // await system.closeRoblox()
-    // console.log('closed roblox')
+    if (!await expectText('Play', [[870, 830], [1050, 930]], {
+        retry_interval: 1000,
+        retry_attempts: 10
+    })) {
+        console.log('could not locate textbox play')
+        return
+    }
+    clickPlayButton()
+
+    // adjust camera for detect
+    // hold right click
+    // scroll all the way in
+    // ONE scroll out
+    // this shit doesnt work with robotjs apparently?
+
+    sleep(5000) // waits 3 seconds for fade animation before taking screenshots for biome-detection
+
+    log.info('Detecting biome...')
+    let biome = await determineCurrentProbableBiome({
+        analysis_interval: 250,
+        analysis_iterations: 7,
+        output: true,
+        analysis_output_probable_biome: true,
+        analysis_output_probability_list: false,
+    });
+    log.info('Biome on this server: ' + biome)
+
+    notifyDiscord(biome)
+
+    log.unit('Closing roblox...')
+    await system.closeRoblox()
+    log.unit('Closed roblox.')
+
+    sleep(5000) // wait 5 seconds before rejoining or else roblox gets mad
+    // (time is approximated)
+    doServerRoll()
 }
 
 
 async function test() {
-    await launchRoblox()
+    await doServerRoll()
 
 }
 
@@ -51,7 +82,7 @@ async function test() {
 // CORE objectives:
 
 // launch private
-// done > private server url 
+// done > private server url
 // done > checking if game is already open (skip to check biome)
 // done > confirm game is open
 

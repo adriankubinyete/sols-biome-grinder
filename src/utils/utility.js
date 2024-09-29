@@ -6,15 +6,17 @@ const robot = require('robotjs');
 const fs = require('fs');
 const crypto = require('crypto');
 const levenshtein = require('fast-levenshtein');
-const { verbose } = require('winston');
+const { Webhook, MessageBuilder } = require('discord-webhook-node');
+const { Tests } = require(path.resolve("src/utils/tests"))
+const test = new Tests()
 
 require("dotenv").config({ path: path.resolve(`.env.${process.env.NODE_ENV || 'dev'}`) });
 const { Logger } = require(path.resolve('src/utils/logger'));
 const log = new Logger("utilities", false).useEnvConfig().create();
 
 // Debugging function to get coordinates manually
-// logMousePosition({delay: 250})
-function logMousePosition(config = {}) {
+// logMouseCoordinates({delay: 250})
+function logMouseCoordinates(config = {}) {
     const {
         logging = config?.logging || true,
         extraline = config?.extraline || true,
@@ -88,6 +90,9 @@ async function screenshot(coordinates, filePath, config = {}) {
             width: screenshot.width,
             height: screenshot.height
         })
+
+        image.contrast(0.5)
+        image.brightness(0.2)
 
         image.write(filePath);
         if (logging) { log.unit('Image saved to "' + filePath + '"') }
@@ -198,7 +203,8 @@ async function determineCurrentProbableBiome(config = {}) {
     const {
         analysis_interval = config?.analysis_interval || 500,
         analysis_iterations = config?.analysis_iterations || 7,
-        analysis_log = config?.log_every_analysis || false,
+        analysis_output_probable_biome = config?.analysis_output_probable_biome || true,
+        analysis_output_probability_list = config?.analysis_output_probability_list || false,
         verbose_if_gibberish = config?.verbose_if_gibberish || true,
         output = config?.output || false,
     } = config;
@@ -216,13 +222,15 @@ async function determineCurrentProbableBiome(config = {}) {
 
         // Armazenando o bioma mais provável
         results.push(analysis.probably);
-        probabilities_iterations[`iteration_${i+1}`] = analysis.probabilities
+        probabilities_iterations[`iteration_${i + 1}`] = { 
+            probabilities: analysis.probabilities, 
+            tesseract: tesseract_biome_output,
+            cleaned_tesseract: cleaned_biome
+        }
 
         // Enviando saída
-        if (analysis_log) {
-            console.log(`Return: ${analysis.probably} (${analysis.confidence})`)
-            console.log(analysis.probabilities);
-        };
+        if (analysis_output_probable_biome) { console.log(`${analysis.probably} (${analysis.confidence})`) };
+        if (analysis_output_probability_list) { console.log(analysis.probabilities) };
 
         // Aguardando o intervalo entre análises
         await new Promise(resolve => setTimeout(resolve, analysis_interval));
@@ -358,11 +366,90 @@ function analyzeCurrentText(text) {
     };
 }
 
+function sleep(ms) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); // wait 2000ms
+}
+
+function click(coordinates) {
+    const [x, y] = coordinates;
+    robot.moveMouse(x - 5, y - 5); // teleports near objective
+    robot.moveMouseSmooth(x, y); // adjust "slowly" to objective
+    console.log(`Clicking on [${x}, ${y}]`)
+    // sleep(200)
+
+    // fast double click
+    robot.mouseClick("left", true)
+
+    // slow click
+    // robot.mouseToggle("down");
+    // setTimeout(function()
+    // {
+    //     robot.mouseToggle("up");
+    // }, 500);
+
+
+    // robot.mouseClick('left')
+    // sleep(200)
+    // robot.mouseClick('left')
+    // sleep(200)
+    // robot.mouseClick('left')
+    // sleep(2000)
+    // console.log('trying press-release')
+    // robot.mousePress()
+    // sleep(200)
+    // robot.mouseRelease()
+}
+
+function clickPlayButton() {
+    return click([960, 870])
+}
+
+async function notifyDiscord(biome, pingUser = false) {
+    const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+    const hook = new Webhook(WEBHOOK_URL)
+
+    const COLORS = {
+        'Normal': '#ffffff',
+        'Rainy': '#2323ff',
+        'Windy': '#83CAC8',
+        'Corruption': '#ff11ff',
+        'Null': '#7f7f7f',
+        'SandStorm': '#ff0000',
+        'Hell': '#ff7700',
+        'Starfall': '#0000ff',
+        'Glitch': '#000000'
+    }
+
+    console.log('Should ping user? ' + pingUser)
+    let message = new MessageBuilder()
+        .setText(pingUser ? `<@${process.env.DISCORD_USERID_TO_PING}>` : '')
+        .setColor(COLORS[biome])
+        .setDescription(`[${getCurrentTimeFormatted()}] **Biome**: \`${biome}\``)
+        .setTimestamp()
+
+    hook.send(message)
+};
+
+function getCurrentTimeFormatted() {
+    const now = new Date();
+    
+    // Pega a hora, minuto e segundo
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    // Retorna no formato [HH:MM:SS]
+    return `[${hours}:${minutes}:${seconds}]`;
+}
+
 module.exports = {
-    logMousePosition,
+    logMouseCoordinates,
     screenshot,
     expectText,
     readCoordinate,
     readBiome,
     determineCurrentProbableBiome,
+    notifyDiscord,
+    clickPlayButton,
+    sleep
 }
