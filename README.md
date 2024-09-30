@@ -6,12 +6,14 @@ biome detection reliability is average 80%
 no false-positives as of now (about #1000 server rolls)
 
 To-do:
+- TESTS: test something about auto roll while you do server roll
 - IMPROVEMENT: align camera to read biome image better (results in better confidence in biome identification)
 - IMPROVEMENT: use windows api to get dll and read biome from memory if possible (no idea)
 - COMPATIBILITY: dont use absolute coordinates, use coordinates relative to roblox window (gotta study how to implement this properly, but results in not being resolution-dependant, in short, make the app work independant of whoever runs it and their setup)
 - COMPATIBILITY: better detections for things that i am hard-coded estimating (load times, etc. results in independency of user hardware specs if i can accurately detect when something loads etc.)
 - FEAT: auto pop hp2 in specific biome.
 - FEAT: stop server rolling in specific biome, for the biome's entire duration (for now its flat 2 minutes wait)
+- FEAT: option to spam ping you on specific biome (lol)
 - CODEBASE: look for timing improvements
 - CODEBASE: organize/modularize better
 - CODEBASE: refactor everything
